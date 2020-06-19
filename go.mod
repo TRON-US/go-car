@@ -9,7 +9,9 @@ require (
 	github.com/ipld/go-ipld-prime v0.0.2-0.20200428162820-8b59dc292b8e
 	github.com/ipld/go-ipld-prime-proto v0.0.0-20200428191222-c1ffdadc01e1
 	github.com/multiformats/go-multihash v0.0.13
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.5.1
 )
 
 go 1.13
+
+replace github.com/ipld/go-ipld-prime-proto => github.com/TRON-US/go-ipld-prime-proto v0.0.1
