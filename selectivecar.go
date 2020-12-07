@@ -7,12 +7,13 @@ import (
 	"fmt"
 	"io"
 
-	cid "github.com/ipfs/go-cid"
 	util "github.com/ipld/go-car/util"
+
+	cid "github.com/ipfs/go-cid"
 	"github.com/ipld/go-ipld-prime"
 	dagpb "github.com/ipld/go-ipld-prime-proto"
-	ipldfree "github.com/ipld/go-ipld-prime/impl/free"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 )
@@ -221,8 +222,8 @@ func (sct *selectiveCarTraverser) loader(lnk ipld.Link, ctx ipld.LinkContext) (i
 
 func (sct *selectiveCarTraverser) traverseBlocks() error {
 
-	nbc := dagpb.AddDagPBSupportToChooser(func(ipld.Link, ipld.LinkContext) ipld.NodeBuilder {
-		return ipldfree.NodeBuilder()
+	nsc := dagpb.AddDagPBSupportToChooser(func(ipld.Link, ipld.LinkContext) (ipld.NodePrototype, error) {
+		return basicnode.Prototype.Any, nil
 	})
 
 	for _, carDag := range sct.sc.dags {
@@ -231,16 +232,21 @@ func (sct *selectiveCarTraverser) traverseBlocks() error {
 			return err
 		}
 		lnk := cidlink.Link{Cid: carDag.Root}
-		nb := nbc(lnk, ipld.LinkContext{})
-		nd, err := lnk.Load(sct.sc.ctx, ipld.LinkContext{}, nb, sct.loader)
+		ns, err := nsc(lnk, ipld.LinkContext{})
 		if err != nil {
 			return err
 		}
+		nb := ns.NewBuilder()
+		err = lnk.Load(sct.sc.ctx, ipld.LinkContext{}, nb, sct.loader)
+		if err != nil {
+			return err
+		}
+		nd := nb.Build()
 		err = traversal.Progress{
 			Cfg: &traversal.Config{
-				Ctx:                    sct.sc.ctx,
-				LinkLoader:             sct.loader,
-				LinkNodeBuilderChooser: nbc,
+				Ctx:                            sct.sc.ctx,
+				LinkLoader:                     sct.loader,
+				LinkTargetNodePrototypeChooser: nsc,
 			},
 		}.WalkAdv(nd, parsed, func(traversal.Progress, ipld.Node, traversal.VisitReason) error { return nil })
 		if err != nil {
